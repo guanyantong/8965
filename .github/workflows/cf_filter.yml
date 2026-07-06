@@ -1,0 +1,34 @@
+name: Cloudflare IP Filter
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # 每 4 小时自动在云端悄悄运行一次
+  workflow_dispatch:      # 开启手动触发开关（方便我们等下直接测试）
+
+jobs:
+  run-filter:
+    runs-on: ubuntu-latest
+    
+    # 赋予这个自动化脚本往你仓库里写入 ip_list.txt 的权限
+    permissions:
+      contents: write
+
+    steps:
+    - name: 📝 拉取仓库代码
+      uses: actions/checkout@v4
+
+    - name: 🐍 准备 Python 环境
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: 🚀 运行全球节点排雷脚本
+      run: python filter.py
+
+    - name: 💾 将筛选出的 ip_list.txt 存回仓库
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add ip_list.txt
+        # 只有在文件内容真的有变化时才提交，防止无意义的频繁刷新
+        git diff --quiet && git diff --staged --quiet || (git commit -m "自动更新优选全球IP列表" && git push)

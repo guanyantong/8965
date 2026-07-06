@@ -18,7 +18,7 @@ COUNTRY_MAP = {
     "BR": "巴西", "BS": "巴哈马", "BT": "不丹", "BV": "布韦岛", "BW": "博茨瓦纳", 
     "BY": "白俄罗斯", "BZ": "伯利兹", "CA": "加拿大", "CC": "科科斯群岛", "CD": "刚果民主共和国", 
     "CF": "中非共和国", "CG": "刚果共和国", "CH": "瑞士", "CI": "科特迪瓦", "CK": "库克群岛", 
-    "CL": "智利", "CM": "喀麦隆", "CN": "中国", "CO": "哥伦比亚", "CR": "哥斯达黎加", 
+    "CL": "智利", "CM": "喀幕隆", "CN": "中国", "CO": "哥伦比亚", "CR": "哥斯达黎加", 
     "CU": "古巴", "CV": "佛得角", "CW": "库拉索", "CX": "圣诞岛", "CY": "塞浦路斯", 
     "CZ": "捷克", "DE": "德国", "DJ": "吉布提", "DK": "丹麦", "DM": "多米尼克", 
     "DO": "多米尼加", "DZ": "阿尔及利亚", "EC": "厄瓜多尔", "EE": "爱沙尼亚", "EG": "埃及", 
@@ -56,7 +56,7 @@ COUNTRY_MAP = {
     "TK": "托克劳", "TL": "东帝汶", "TM": "土库曼斯坦", "TN": "突尼斯", "TO": "汤加", 
     "TR": "土耳其", "TT": "特立尼达和多巴哥", "TV": "图瓦卢", "TW": "台湾", "TZ": "坦桑尼亚", 
     "UA": "乌克兰", "UG": "乌干达", "UM": "美属本土外小岛屿", "US": "美国", "UY": "乌拉圭", 
-    "UZ": "乌兹别克斯坦", "VA": "梵蒂冈", "VC": "圣文森特和格林纳丁斯", "VE": "委内瑞拉", 
+    "UZ": "乌兹别克斯坦", "VA": "梵蒂冈", "VC": "圣文森特和格林纳丁斯", "VE": "委内移拉", 
     "VG": "英属维尔京群岛", "VI": "美属维尔京群岛", "VN": "越南", "VU": "瓦努阿图", 
     "WF": "瓦利斯和富图纳", "WS": "萨摩亚", "XK": "科索沃", "YE": "也门", "YT": "马约特", 
     "ZA": "南非", "ZM": "赞比亚", "ZW": "津巴布韦"
@@ -99,7 +99,6 @@ def main():
         if "#" in line and ":" in line:
             ip_port, country_code = line.split("#", 1)
             ip, port = ip_port.split(":", 1)
-            # 统一提取 IP 和国家，后续测速以 443 为准
             tasks.append((ip.strip(), 443, country_code.strip()))
 
     print(f"解析成功，总计 {len(tasks)} 个有效 IP。开始稳健测试（50并发）...")
@@ -128,16 +127,16 @@ def main():
     for cc in country_buckets:
         country_buckets[cc].sort(key=lambda x: x["latency"])
 
-    # 轮询抽取，上限 300 个独特 IP（乘以 6 个端口后刚好在 1800 个节点左右，非常适合软件加载）
+    # 【关键修改】轮询抽取上限调整为 100 个独特 IP（乘以 6 个端口后刚好输出 600 个节点）
     selected_nodes = []
     bucket_lists = [country_buckets[cc] for cc in country_buckets]
     
-    while len(selected_nodes) < 300 and bucket_lists:
+    while len(selected_nodes) < 100 and bucket_lists:
         next_round_buckets = []
         for bucket in bucket_lists:
             if bucket:
                 selected_nodes.append(bucket.pop(0))
-                if len(selected_nodes) >= 300:
+                if len(selected_nodes) >= 100:
                     break
                 next_round_buckets.append(bucket)
         bucket_lists = next_round_buckets
@@ -151,7 +150,6 @@ def main():
             country_name = COUNTRY_MAP.get(node["cc"], node["cc"])
             # 为每个活 IP 生成 6 个合法的 Cloudflare 端口
             for port in CF_HTTPS_PORTS:
-                # 格式示例：103.152.113.60:8443#US美国-8443 [398.89ms]
                 line_str = f"{node['ip']}:{port}#{node['cc']}{country_name}-{port} [{node['latency']:.2f}ms]\n"
                 f.write(line_str)
             
